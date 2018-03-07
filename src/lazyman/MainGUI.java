@@ -448,7 +448,6 @@ public final class MainGUI extends javax.swing.JFrame {
 
                 playActionPanel.setLayout(new java.awt.GridBagLayout());
 
-                saveStreamCB.setFont(new java.awt.Font("Monospaced", 0, 11)); // NOI18N
                 saveStreamCB.setMnemonic(KeyEvent.VK_V);
                 saveStreamCB.setText("Save stream");
                 saveStreamCB.setEnabled(false);
@@ -463,6 +462,7 @@ public final class MainGUI extends javax.swing.JFrame {
                 gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
                 playActionPanel.add(saveStreamCB, gridBagConstraints);
 
+                restartCB.setMnemonic(KeyEvent.VK_R);
                 restartCB.setText("Restart");
                 restartCB.addActionListener(new java.awt.event.ActionListener() {
                     public void actionPerformed(java.awt.event.ActionEvent evt) {
