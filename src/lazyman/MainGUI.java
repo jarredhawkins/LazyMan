@@ -145,8 +145,8 @@ public final class MainGUI extends javax.swing.JFrame {
         feedCB = new javax.swing.JComboBox<>();
         qualityCB = new javax.swing.JComboBox<>();
         CDNCB = new javax.swing.JComboBox<>();
-        playActionPanel = new javax.swing.JPanel();
         playBtn = new javax.swing.JButton();
+        playActionPanel = new javax.swing.JPanel();
         saveStreamCB = new javax.swing.JCheckBox();
         restartCB = new javax.swing.JCheckBox();
         consolePanel = new javax.swing.JPanel();
@@ -172,11 +172,12 @@ public final class MainGUI extends javax.swing.JFrame {
         setTitle("LazyMan");
         setIconImage(Toolkit.getDefaultToolkit().getImage(MainGUI.class.getResource("/Logos/LM.png")));
         setLocationByPlatform(true);
-        setResizable(false);
+        setPreferredSize(new java.awt.Dimension(648, 512));
 
         mainPanel.setLayout(new javax.swing.BoxLayout(mainPanel, javax.swing.BoxLayout.Y_AXIS));
 
-        gameSelectionPanel.setMaximumSize(new java.awt.Dimension(2147483647, 500));
+        gameSelectionPanel.setMaximumSize(new java.awt.Dimension(32767, 350));
+        gameSelectionPanel.setPreferredSize(new java.awt.Dimension(648, 350));
         gameSelectionPanel.setLayout(new java.awt.BorderLayout());
 
         leaguesTabbedPane.addChangeListener(new javax.swing.event.ChangeListener() {
@@ -337,7 +338,7 @@ public final class MainGUI extends javax.swing.JFrame {
                 refreshBtn1.setText("Refresh");
                 refreshBtn1.addActionListener(new java.awt.event.ActionListener() {
                     public void actionPerformed(java.awt.event.ActionEvent evt) {
-                        refreshBtn1ActionPerformed(evt);
+                        refreshBtnActionPreformed(evt);
                     }
                 });
                 mlbDateSelectionPanel.add(refreshBtn1);
@@ -402,8 +403,7 @@ public final class MainGUI extends javax.swing.JFrame {
 
                 mainPanel.add(gameSelectionPanel);
 
-                playOptionsPanel.setMaximumSize(new java.awt.Dimension(2147483647, 46));
-                playOptionsPanel.setLayout(new java.awt.BorderLayout());
+                playOptionsPanel.setMaximumSize(new java.awt.Dimension(32767, 74));
 
                 playOptionSelectionsPanel.setLayout(new javax.swing.BoxLayout(playOptionSelectionsPanel, javax.swing.BoxLayout.LINE_AXIS));
 
@@ -433,24 +433,20 @@ public final class MainGUI extends javax.swing.JFrame {
                 });
                 playOptionSelectionsPanel.add(CDNCB);
 
-                playOptionsPanel.add(playOptionSelectionsPanel, java.awt.BorderLayout.WEST);
-
-                playActionPanel.setLayout(new java.awt.GridBagLayout());
+                playOptionsPanel.add(playOptionSelectionsPanel);
 
                 playBtn.setMnemonic(KeyEvent.VK_P);
                 playBtn.setText("Play");
                 playBtn.setEnabled(false);
+                playBtn.setPreferredSize(new java.awt.Dimension(80, 40));
                 playBtn.addActionListener(new java.awt.event.ActionListener() {
                     public void actionPerformed(java.awt.event.ActionEvent evt) {
                         playBtnActionPerformed(evt);
                     }
                 });
-                gridBagConstraints = new java.awt.GridBagConstraints();
-                gridBagConstraints.gridx = 0;
-                gridBagConstraints.gridy = 0;
-                gridBagConstraints.gridheight = 2;
-                gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
-                playActionPanel.add(playBtn, gridBagConstraints);
+                playOptionsPanel.add(playBtn);
+
+                playActionPanel.setLayout(new java.awt.GridBagLayout());
 
                 saveStreamCB.setFont(new java.awt.Font("Monospaced", 0, 11)); // NOI18N
                 saveStreamCB.setMnemonic(KeyEvent.VK_V);
@@ -479,7 +475,7 @@ public final class MainGUI extends javax.swing.JFrame {
                 gridBagConstraints.anchor = java.awt.GridBagConstraints.FIRST_LINE_START;
                 playActionPanel.add(restartCB, gridBagConstraints);
 
-                playOptionsPanel.add(playActionPanel, java.awt.BorderLayout.EAST);
+                playOptionsPanel.add(playActionPanel);
 
                 mainPanel.add(playOptionsPanel);
 
@@ -885,9 +881,9 @@ public final class MainGUI extends javax.swing.JFrame {
         streamlink.restart = restartCB.isSelected();
     }//GEN-LAST:event_restartCBActionPerformed
 
-    private void refreshBtn1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtn1ActionPerformed
+    private void refreshBtnActionPreformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPreformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_refreshBtn1ActionPerformed
+    }//GEN-LAST:event_refreshBtnActionPreformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -1046,7 +1042,7 @@ public final class MainGUI extends javax.swing.JFrame {
         for (int i = 0; i < leagues[lg].getGames().length; i++) {
             if ((leagues[lg].getGames()[i].getAwayTeam()).equals(team)) {
                 if (leagues[lg].getGames()[i].getGameState().contains("Pre") || leagues[lg].getGames()[i].getGameState().contains("In Progress") || leagues[lg].getGames()[i].getGameState().contains("Final")) {
-                    if (leagues[leaguesTabbedPane.getSelectedIndex()].getGames()[i].contains("AWAY")) {
+                    if (leagues[lg].getGames()[i].contains("AWAY")) {
                         return i + "a";
                     }
                     return i + "n";
