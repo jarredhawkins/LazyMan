@@ -14,7 +14,7 @@ public class GetNHLInfo {
     public static Game[] getGames(String date) {
         try {
             JsonObject t = new JsonParser().parse(Web.getContent("https://statsapi.web.nhl.com/api/v1/schedule?startDate=" + date + "&endDate=" + date
-                    + "&expand=schedule.teams,schedule.linescore,schedule.game.content.media.epg"))
+                    + "&expand=schedule.teams,schedule.linescore,schedule.broadcasts.all,schedule.game.content.media.epg"))
                     .getAsJsonObject();
 
             if (t.get("totalItems").getAsInt() < 1) {
@@ -30,9 +30,11 @@ public class GetNHLInfo {
                 g1 = new Game();
 
                 g1.setGameID(jo.getAsJsonObject().get("gamePk").getAsInt());
-                g1.setTime(jo.getAsJsonObject().get("gameDate").getAsString().substring(11).replace("Z", ""));
-                if (g1.getTime().equals("04:00:00")) {
+
+                if (jo.getAsJsonObject().getAsJsonObject("status").get("startTimeTBD").getAsBoolean()) {
                     g1.setTime("TBD");
+                } else {
+                    g1.setTime(jo.getAsJsonObject().get("gameDate").getAsString().substring(11).replace("Z", ""));
                 }
                 g1.setDate(jo.getAsJsonObject().get("gameDate").getAsString().substring(0, 10));
 
@@ -43,7 +45,7 @@ public class GetNHLInfo {
                 g1.setHomeTeam(jo.getAsJsonObject().getAsJsonObject("teams").getAsJsonObject("home").getAsJsonObject("team").get("abbreviation").getAsString());
 
                 g1.setGameState(jo.getAsJsonObject().getAsJsonObject("status").get("detailedState").getAsString());
-                
+
                 try {
                     g1.setActualStart(jo.getAsJsonObject().getAsJsonObject("linescore").getAsJsonArray("periods").get(0).getAsJsonObject().get("startTime").getAsString().replace("T", " ").replace("Z", ""));
                 } catch (Exception e) {
@@ -61,18 +63,31 @@ public class GetNHLInfo {
                 } else {
                     g1.setTimeRemaining("n/a");
                 }
-                
+
+                boolean cl = false;
                 if (jo.getAsJsonObject().getAsJsonObject("content").getAsJsonObject("media") != null) {
+                    MAIN_LOOP:
                     for (JsonElement stream : jo.getAsJsonObject().getAsJsonObject("content").getAsJsonObject("media").getAsJsonArray("epg")) {
                         if (stream.getAsJsonObject().get("title").getAsString().equals("NHLTV")) {
                             for (JsonElement innerStr : stream.getAsJsonObject().getAsJsonArray("items")) {
-                                if (innerStr.getAsJsonObject().get("feedName").getAsString().equals(""))
+                                if (innerStr.getAsJsonObject().get("mediaState").getAsString().equals("MEDIA_OFF")) {
+                                    cl = true;
+                                    break MAIN_LOOP;
+                                }
+                                if (innerStr.getAsJsonObject().get("feedName").getAsString().equals("")) {
                                     g1.addFeed(innerStr.getAsJsonObject().get("mediaFeedType").getAsString(), innerStr.getAsJsonObject().get("mediaPlaybackId").getAsString(), innerStr.getAsJsonObject().get("callLetters").getAsString());
-                                else
+                                } else {
                                     g1.addFeed(innerStr.getAsJsonObject().get("feedName").getAsString(), innerStr.getAsJsonObject().get("mediaPlaybackId").getAsString(), innerStr.getAsJsonObject().get("callLetters").getAsString());
+                                }
                             }
                         }
                     }
+                } else {
+                    cl = true;
+                }
+
+                if (cl) {
+                    g1.addFeed("Info available later", null, "");
                 }
                 g[i] = g1;
                 i++;

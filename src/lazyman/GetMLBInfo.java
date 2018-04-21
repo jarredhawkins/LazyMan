@@ -22,7 +22,7 @@ public class GetMLBInfo {
                 return null;
             }
 
-            int i = 0, j = 0;
+            int i = 0;
 
             Game[] g = new Game[t.getAsJsonArray("dates").get(0).getAsJsonObject().get("totalItems").getAsInt()];
             Game g1;
@@ -62,19 +62,28 @@ public class GetMLBInfo {
                     g1.setTimeRemaining("n/a");
                 }
                 
+                boolean cl = false;
                 if (jo.getAsJsonObject().getAsJsonObject("content").getAsJsonObject("media") != null) {
+                    MAIN_LOOP:
                     for (JsonElement stream : jo.getAsJsonObject().getAsJsonObject("content").getAsJsonObject("media").getAsJsonArray("epg")) {
                         if (stream.getAsJsonObject().get("title").getAsString().equals("MLBTV")) {
                             for (JsonElement innerStr : stream.getAsJsonObject().getAsJsonArray("items")) {
-                                if (stream.getAsJsonObject().getAsJsonArray("items").size() == 4 && j < 2) {
-                                    j++;
+                                if (innerStr.getAsJsonObject().get("mediaFeedType").getAsString().contains("IN_"))
                                     continue;
+                                if (innerStr.getAsJsonObject().get("mediaState").getAsString().equals("MEDIA_OFF")) {
+                                    cl = true;
+                                    break MAIN_LOOP;
                                 }
-                                g1.addFeed(innerStr.getAsJsonObject().get("mediaFeedType").getAsString(), innerStr.getAsJsonObject().get("id").getAsString(), innerStr.getAsJsonObject().get("callLetters").getAsString());
+                               g1.addFeed(innerStr.getAsJsonObject().get("mediaFeedType").getAsString(), innerStr.getAsJsonObject().get("id").getAsString(), innerStr.getAsJsonObject().get("callLetters").getAsString());
                             }
-                            j = 0;
                         }
                     }
+                } else {
+                    cl = true;
+                }
+
+                if (cl) {
+                    g1.addFeed("Info available later", null, "");
                 }
                 g[i] = g1;
                 i++;

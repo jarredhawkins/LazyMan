@@ -75,6 +75,12 @@ public class AutoUpdate {
             while (ze != null) {
 
                 String fileName = ze.getName();
+                if (ze.isDirectory()) {
+                    new File(new java.io.File(loc).getParent() + File.separator + fileName).mkdir();
+
+                    ze = zis.getNextEntry();
+                    continue;
+                }
                 File newFile = new File(new java.io.File(loc).getParent() + File.separator + fileName);
 
                 System.out.println("file unzip : " + newFile.getAbsoluteFile());

@@ -7,7 +7,6 @@ import Objects.Time;
 import Objects.Web;
 import Util.AutoUpdate;
 import Util.CenterTextCellRenderer;
-import Util.Console.FullConsole;
 import Util.EditHosts;
 import Util.IconTextCellRemderer;
 import Util.MessageBox;
@@ -21,13 +20,9 @@ import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -44,13 +39,16 @@ public final class MainGUI extends javax.swing.JFrame {
 
     private final Streamlink streamlink;
     private final League[] leagues;
+    private boolean gettingFeeds;
 
     public MainGUI() {
-        streamlink = new Streamlink();
         initComponents();
+        checkUpdate();
+        gettingFeeds = false;
+        streamlink = new Streamlink();
         getVLCLocation();
-        leagues = new League[leaguesTabbedPane.getTabCount()];
-        for (int i = 0; i < leaguesTabbedPane.getTabCount(); i++) {
+        leagues = new League[leaguesTabbedPane.getTabCount() - 1];
+        for (int i = 0; i < leaguesTabbedPane.getTabCount() - 1; i++) {
             leagues[i] = new League();
         }
         leagues[0].setTable(NHLGameTable);
@@ -59,8 +57,8 @@ public final class MainGUI extends javax.swing.JFrame {
         leagues[1].setTable(MLBGameTable);
         leagues[1].setDateTF(MLBDateTF);
         leagues[1].setKeyURL("playback.svcs.mlb.com");
-        checkUpdate();
-        for (int i = 0; i < leaguesTabbedPane.getTabCount(); i++) {
+        
+        for (int i = 0; i < leaguesTabbedPane.getTabCount() - 1; i++) {
             leagues[i].setName(leaguesTabbedPane.getTitleAt(i));
             leagues[i].setDate(Time.getPSTDate("yyyy-MM-dd"));
             leagues[i].getDateTF().setDate(Time.getPSTDate1("MMM dd, yyyy"));
@@ -140,7 +138,11 @@ public final class MainGUI extends javax.swing.JFrame {
         refreshBtn1 = new javax.swing.JButton();
         mlbScrollPanel = new javax.swing.JScrollPane();
         MLBGameTable = new javax.swing.JTable();
+        consoleScrollPane = new javax.swing.JScrollPane();
+        consoleTA = new javax.swing.JTextPane();
+        consolePanel = new javax.swing.JPanel();
         playOptionsPanel = new javax.swing.JPanel();
+        jProgressBar1 = new javax.swing.JProgressBar();
         playOptionSelectionsPanel = new javax.swing.JPanel();
         feedCB = new javax.swing.JComboBox<>();
         qualityCB = new javax.swing.JComboBox<>();
@@ -149,10 +151,6 @@ public final class MainGUI extends javax.swing.JFrame {
         playActionPanel = new javax.swing.JPanel();
         saveStreamCB = new javax.swing.JCheckBox();
         restartCB = new javax.swing.JCheckBox();
-        consolePanel = new javax.swing.JPanel();
-        consoleScrollPane = new javax.swing.JScrollPane();
-        consoleTA = new javax.swing.JTextPane();
-        maximizeConsoleButton = new javax.swing.JButton();
         jMenuBar1 = new javax.swing.JMenuBar();
         jMenu1 = new javax.swing.JMenu();
         changePasswordMI = new javax.swing.JMenuItem();
@@ -174,12 +172,14 @@ public final class MainGUI extends javax.swing.JFrame {
         setLocationByPlatform(true);
         setPreferredSize(new java.awt.Dimension(648, 512));
 
+        mainPanel.setMaximumSize(new java.awt.Dimension(32767, 4096));
         mainPanel.setLayout(new javax.swing.BoxLayout(mainPanel, javax.swing.BoxLayout.Y_AXIS));
 
-        gameSelectionPanel.setMaximumSize(new java.awt.Dimension(32767, 350));
+        gameSelectionPanel.setMaximumSize(new java.awt.Dimension(32767, 2350));
         gameSelectionPanel.setPreferredSize(new java.awt.Dimension(648, 350));
         gameSelectionPanel.setLayout(new java.awt.BorderLayout());
 
+        leaguesTabbedPane.setInheritsPopupMenu(true);
         leaguesTabbedPane.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 leaguesTabbedPaneStateChanged(evt);
@@ -399,11 +399,29 @@ public final class MainGUI extends javax.swing.JFrame {
 
                 leaguesTabbedPane.addTab("MLB", mlbPanel);
 
+                consoleScrollPane.setBorder(null);
+
+                consoleTA.setEditable(false);
+                consoleTA.setBackground(new java.awt.Color(0, 0, 0));
+                consoleTA.setForeground(new java.awt.Color(255, 255, 255));
+                consoleTA.setDoubleBuffered(true);
+                consoleTA.setMaximumSize(new java.awt.Dimension(8, 21));
+                consoleScrollPane.setViewportView(consoleTA);
+                consoleTA.addMouseListener(new PopupListener(consolePM));
+
+                leaguesTabbedPane.addTab("Log", consoleScrollPane);
+
                 gameSelectionPanel.add(leaguesTabbedPane, java.awt.BorderLayout.CENTER);
 
                 mainPanel.add(gameSelectionPanel);
 
+                consolePanel.setLayout(new javax.swing.BoxLayout(consolePanel, javax.swing.BoxLayout.Y_AXIS));
+                mainPanel.add(consolePanel);
+
                 playOptionsPanel.setMaximumSize(new java.awt.Dimension(32767, 74));
+
+                jProgressBar1.setPreferredSize(new java.awt.Dimension(64, 12));
+                playOptionsPanel.add(jProgressBar1);
 
                 playOptionSelectionsPanel.setLayout(new javax.swing.BoxLayout(playOptionSelectionsPanel, javax.swing.BoxLayout.LINE_AXIS));
 
@@ -448,7 +466,6 @@ public final class MainGUI extends javax.swing.JFrame {
 
                 playActionPanel.setLayout(new java.awt.GridBagLayout());
 
-                saveStreamCB.setFont(new java.awt.Font("Monospaced", 0, 11)); // NOI18N
                 saveStreamCB.setMnemonic(KeyEvent.VK_V);
                 saveStreamCB.setText("Save stream");
                 saveStreamCB.setEnabled(false);
@@ -463,6 +480,7 @@ public final class MainGUI extends javax.swing.JFrame {
                 gridBagConstraints.anchor = java.awt.GridBagConstraints.NORTHWEST;
                 playActionPanel.add(saveStreamCB, gridBagConstraints);
 
+                restartCB.setMnemonic(KeyEvent.VK_R);
                 restartCB.setText("Restart");
                 restartCB.addActionListener(new java.awt.event.ActionListener() {
                     public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -478,31 +496,6 @@ public final class MainGUI extends javax.swing.JFrame {
                 playOptionsPanel.add(playActionPanel);
 
                 mainPanel.add(playOptionsPanel);
-
-                consolePanel.setLayout(new javax.swing.BoxLayout(consolePanel, javax.swing.BoxLayout.Y_AXIS));
-
-                consoleScrollPane.setBorder(javax.swing.BorderFactory.createTitledBorder("Console"));
-
-                consoleTA.setEditable(false);
-                consoleTA.setBackground(new java.awt.Color(0, 0, 0));
-                consoleTA.setForeground(new java.awt.Color(255, 255, 255));
-                consoleTA.setDoubleBuffered(true);
-                consoleTA.setMaximumSize(new java.awt.Dimension(8, 21));
-                consoleScrollPane.setViewportView(consoleTA);
-                consoleTA.addMouseListener(new PopupListener(consolePM));
-
-                consolePanel.add(consoleScrollPane);
-
-                maximizeConsoleButton.setIcon(new javax.swing.ImageIcon(MainGUI.class.getResource("/Icons/fullscreen.png")));
-                maximizeConsoleButton.setLabel("View bigger console");
-                maximizeConsoleButton.addActionListener(new java.awt.event.ActionListener() {
-                    public void actionPerformed(java.awt.event.ActionEvent evt) {
-                        maximizeConsoleButtonActionPerformed(evt);
-                    }
-                });
-                consolePanel.add(maximizeConsoleButton);
-
-                mainPanel.add(consolePanel);
 
                 getContentPane().add(mainPanel, java.awt.BorderLayout.CENTER);
 
@@ -617,14 +610,16 @@ public final class MainGUI extends javax.swing.JFrame {
         if (!playBtn.isEnabled()) {
             return;
         }
-        
+        jProgressBar1.setIndeterminate(true);
         if (leagues[leaguesTabbedPane.getSelectedIndex()].getName().equals("MLB")) {
-            if (Integer.parseInt(leagues[leaguesTabbedPane.getSelectedIndex()].getDate().substring(0, 4)) > 2017)
+            if (Integer.parseInt(leagues[leaguesTabbedPane.getSelectedIndex()].getDate().substring(0, 4)) > 2017) {
                 checkHosts(leagues[leaguesTabbedPane.getSelectedIndex()].getKeyURL(), leagues[leaguesTabbedPane.getSelectedIndex()]);
-            else
+            } else {
                 checkHosts("mlb-ws-mf.media.mlb.com", leagues[leaguesTabbedPane.getSelectedIndex()]);
-        } else
+            }
+        } else {
             checkHosts(leagues[leaguesTabbedPane.getSelectedIndex()].getKeyURL(), leagues[leaguesTabbedPane.getSelectedIndex()]);
+        }
 
         if (!leagues[leaguesTabbedPane.getSelectedIndex()].isHostsFileEdited()) {
             MessageBox.show("You are not completely set up! Your hosts file needs to be edited for " + leagues[leaguesTabbedPane.getSelectedIndex()].getName() + ".", "Hosts file not edited", 2);
@@ -640,12 +635,10 @@ public final class MainGUI extends javax.swing.JFrame {
             }
         }
 
-        leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().setUrl(getMediaID(), leagues[leaguesTabbedPane.getSelectedIndex()].getName());
-
-        if (leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().getUrl().endsWith("n/a")) {
+        /*if (leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().getUrl().endsWith("n/a")) {
             MessageBox.show("The stream has expired. Ask StevensNJD4 to make it available.", "Not Available", 0);
             return;
-        }
+        }*/
 
         if (playBtn.getText().equals("Stop Recording")) {
             leagues[leaguesTabbedPane.getSelectedIndex()].setStreamlinkSwitch(-1);
@@ -665,7 +658,7 @@ public final class MainGUI extends javax.swing.JFrame {
             leagues[leaguesTabbedPane.getSelectedIndex()].setStreamlinkSwitch(0);
         }
 
-        SwingWorker<Void, Void> pl = playGame();
+        SwingWorker<Void, Void> pl = playGame(leaguesTabbedPane.getSelectedIndex());
         pl.execute();
     }//GEN-LAST:event_playBtnActionPerformed
 
@@ -676,7 +669,7 @@ public final class MainGUI extends javax.swing.JFrame {
         op.setLocationRelativeTo(this);
         op.setVisible(true);
 
-        for (int i = 0; i < leaguesTabbedPane.getTabCount(); i++) {
+        for (int i = 0; i < leaguesTabbedPane.getTabCount() - 1; i++) {
             leagues[i].setFavoriteTeam(Props.getFavTeam(leagues[i].getName()));
 
             if (!leagues[i].getTable().getModel().getValueAt(0, 0).equals("None")) {
@@ -723,37 +716,6 @@ public final class MainGUI extends javax.swing.JFrame {
         OpenURL.open("https://www.reddit.com/r/LazyMan/wiki/downloads");
     }//GEN-LAST:event_updateMIActionPerformed
 
-    private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
-        SwingWorker<Void, Void> gg;
-        gg = getGames(-1, leaguesTabbedPane.getSelectedIndex());
-        if (leagues[leaguesTabbedPane.getSelectedIndex()].getTimer() != null) {
-            leagues[leaguesTabbedPane.getSelectedIndex()].getTimer().cancel();
-            leagues[leaguesTabbedPane.getSelectedIndex()].setTimer(new Timer());
-            leagues[leaguesTabbedPane.getSelectedIndex()].getTimer().scheduleAtFixedRate(new Refresh(leaguesTabbedPane.getSelectedIndex()), Props.getRefreshRate() * 60 * 1000, Props.getRefreshRate() * 60 * 1000);
-        }
-        gg.execute();
-    }//GEN-LAST:event_refreshBtnActionPerformed
-
-    private void maximizeConsoleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_maximizeConsoleButtonActionPerformed
-        FullConsole fc = new FullConsole(this, true, consoleTA);
-        fc.setLocationRelativeTo(this);
-        fc.setVisible(true);
-    }//GEN-LAST:event_maximizeConsoleButtonActionPerformed
-
-    private void NHLPrevDayBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NHLPrevDayBtnActionPerformed
-        leagues[leaguesTabbedPane.getSelectedIndex()].setFavGameSelected(false);
-        leagues[leaguesTabbedPane.getSelectedIndex()].setDate(Time.getPrevDay(leagues[leaguesTabbedPane.getSelectedIndex()].getDate()));
-        leagues[leaguesTabbedPane.getSelectedIndex()].getDateTF().setDate(Time.getDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate(), "yyyy-MM-dd"));
-        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(0);
-    }//GEN-LAST:event_NHLPrevDayBtnActionPerformed
-
-    private void NHLNextDayBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NHLNextDayBtnActionPerformed
-        leagues[leaguesTabbedPane.getSelectedIndex()].setFavGameSelected(false);
-        leagues[leaguesTabbedPane.getSelectedIndex()].setDate(Time.getNextDay(leagues[leaguesTabbedPane.getSelectedIndex()].getDate()));
-        leagues[leaguesTabbedPane.getSelectedIndex()].getDateTF().setDate(Time.getDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate(), "yyyy-MM-dd"));
-        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(0);
-    }//GEN-LAST:event_NHLNextDayBtnActionPerformed
-
     private void jMenuItem1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem1ActionPerformed
         CustomIP c = new CustomIP(this, true);
         c.setLocationRelativeTo(this);
@@ -769,43 +731,6 @@ public final class MainGUI extends javax.swing.JFrame {
             MessageBox.show("Hosts file not cleared from LazyMan edits. Please check the console area.", "Hosts Not File Cleared", 2);
         }
     }//GEN-LAST:event_jMenuItem2ActionPerformed
-
-    private void MLBPrevDayBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_MLBPrevDayBtnActionPerformed
-        leagues[leaguesTabbedPane.getSelectedIndex()].setFavGameSelected(false);
-        leagues[leaguesTabbedPane.getSelectedIndex()].setDate(Time.getPrevDay(leagues[leaguesTabbedPane.getSelectedIndex()].getDate()));
-        leagues[leaguesTabbedPane.getSelectedIndex()].getDateTF().setDate(Time.getDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate(), "yyyy-MM-dd"));
-        leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().setDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate());
-        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(0);
-    }//GEN-LAST:event_MLBPrevDayBtnActionPerformed
-
-    private void MLBNextDayBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_MLBNextDayBtnActionPerformed
-        leagues[leaguesTabbedPane.getSelectedIndex()].setFavGameSelected(false);
-        leagues[leaguesTabbedPane.getSelectedIndex()].setDate(Time.getNextDay(leagues[leaguesTabbedPane.getSelectedIndex()].getDate()));
-        leagues[leaguesTabbedPane.getSelectedIndex()].getDateTF().setDate(Time.getDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate(), "yyyy-MM-dd"));
-        leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().setDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate());
-        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(0);
-    }//GEN-LAST:event_MLBNextDayBtnActionPerformed
-
-    private void MLBGameTableMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_MLBGameTableMouseClicked
-        if (MLBGameTable.getModel().getValueAt(0, 0).equals("None")) {
-            return;
-        }
-
-        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(MLBGameTable.getSelectedRow());
-        getAvailableStreams(leagues[leaguesTabbedPane.getSelectedIndex()].getSelectedGame());
-        setFeed(MLBGameTable.getSelectedRow(), 'a');
-        enablePlayBtn();
-
-        if (evt != null && evt.getClickCount() == 2) {
-            playBtnActionPerformed(null);
-        }
-    }//GEN-LAST:event_MLBGameTableMouseClicked
-
-    private void MLBGameTableKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_MLBGameTableKeyReleased
-        if (evt.getKeyCode() == KeyEvent.VK_UP || KeyEvent.VK_DOWN == evt.getKeyCode()) {
-            MLBGameTableMouseClicked(null);
-        }
-    }//GEN-LAST:event_MLBGameTableKeyReleased
 
     private void qualityCBItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_qualityCBItemStateChanged
         String quality = (String) qualityCB.getSelectedItem();
@@ -836,8 +761,29 @@ public final class MainGUI extends javax.swing.JFrame {
         Props.setCDN(cdn);
     }//GEN-LAST:event_CDNCBItemStateChanged
 
+    private void feedCBItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_feedCBItemStateChanged
+       if (gettingFeeds)
+           return;
+        
+        Object item = evt.getItem();
+
+        if (!item.toString().equals("Info available later") && evt.getStateChange() == java.awt.event.ItemEvent.SELECTED && feedCB.getItemCount() >= 1) {
+            enablePlayBtn();
+        }
+    }//GEN-LAST:event_feedCBItemStateChanged
+
+    private void restartCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_restartCBActionPerformed
+        streamlink.restart = restartCB.isSelected();
+    }//GEN-LAST:event_restartCBActionPerformed
+
     private void leaguesTabbedPaneStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_leaguesTabbedPaneStateChanged
         if (leagues == null) {
+            return;
+        }
+        if (leaguesTabbedPane.getTitleAt(leaguesTabbedPane.getSelectedIndex()).equals("Log")) {
+            playBtn.setEnabled(false);
+            saveStreamCB.setEnabled(false);
+            restartCB.setEnabled(false);
             return;
         }
 
@@ -850,11 +796,52 @@ public final class MainGUI extends javax.swing.JFrame {
         enablePlayBtn();
     }//GEN-LAST:event_leaguesTabbedPaneStateChanged
 
-    private void feedCBItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_feedCBItemStateChanged
-        if (feedCB.getItemCount() >= 1) {
-            enablePlayBtn();
+    private void MLBGameTableKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_MLBGameTableKeyReleased
+        if (evt.getKeyCode() == KeyEvent.VK_UP || KeyEvent.VK_DOWN == evt.getKeyCode()) {
+            MLBGameTableMouseClicked(null);
         }
-    }//GEN-LAST:event_feedCBItemStateChanged
+    }//GEN-LAST:event_MLBGameTableKeyReleased
+
+    private void MLBGameTableMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_MLBGameTableMouseClicked
+        if (MLBGameTable.getModel().getValueAt(0, 0).equals("None")) {
+            return;
+        }
+
+        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(MLBGameTable.getSelectedRow());
+        getAvailableStreams(leagues[leaguesTabbedPane.getSelectedIndex()].getSelectedGame());
+        setFeed(MLBGameTable.getSelectedRow(), 'a');
+        enablePlayBtn();
+
+        if (evt != null && evt.getClickCount() == 2) {
+            playBtnActionPerformed(null);
+        }
+    }//GEN-LAST:event_MLBGameTableMouseClicked
+
+    private void refreshBtnActionPreformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPreformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_refreshBtnActionPreformed
+
+    private void MLBNextDayBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_MLBNextDayBtnActionPerformed
+        leagues[leaguesTabbedPane.getSelectedIndex()].setFavGameSelected(false);
+        leagues[leaguesTabbedPane.getSelectedIndex()].setDate(Time.getNextDay(leagues[leaguesTabbedPane.getSelectedIndex()].getDate()));
+        leagues[leaguesTabbedPane.getSelectedIndex()].getDateTF().setDate(Time.getDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate(), "yyyy-MM-dd"));
+        leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().setDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate());
+        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(0);
+    }//GEN-LAST:event_MLBNextDayBtnActionPerformed
+
+    private void MLBPrevDayBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_MLBPrevDayBtnActionPerformed
+        leagues[leaguesTabbedPane.getSelectedIndex()].setFavGameSelected(false);
+        leagues[leaguesTabbedPane.getSelectedIndex()].setDate(Time.getPrevDay(leagues[leaguesTabbedPane.getSelectedIndex()].getDate()));
+        leagues[leaguesTabbedPane.getSelectedIndex()].getDateTF().setDate(Time.getDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate(), "yyyy-MM-dd"));
+        leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().setDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate());
+        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(0);
+    }//GEN-LAST:event_MLBPrevDayBtnActionPerformed
+
+    private void NHLGameTableKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_NHLGameTableKeyReleased
+        if (evt.getKeyCode() == KeyEvent.VK_UP || KeyEvent.VK_DOWN == evt.getKeyCode()) {
+            NHLGameTableMouseClicked(null);
+        }
+    }//GEN-LAST:event_NHLGameTableKeyReleased
 
     private void NHLGameTableMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_NHLGameTableMouseClicked
         if (NHLGameTable.getModel().getValueAt(0, 0).equals("None")) {
@@ -871,19 +858,30 @@ public final class MainGUI extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_NHLGameTableMouseClicked
 
-    private void NHLGameTableKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_NHLGameTableKeyReleased
-        if (evt.getKeyCode() == KeyEvent.VK_UP || KeyEvent.VK_DOWN == evt.getKeyCode()) {
-            NHLGameTableMouseClicked(null);
+    private void refreshBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPerformed
+        SwingWorker<Void, Void> gg;
+        gg = getGames(-1, leaguesTabbedPane.getSelectedIndex());
+        if (leagues[leaguesTabbedPane.getSelectedIndex()].getTimer() != null) {
+            leagues[leaguesTabbedPane.getSelectedIndex()].getTimer().cancel();
+            leagues[leaguesTabbedPane.getSelectedIndex()].setTimer(new Timer());
+            leagues[leaguesTabbedPane.getSelectedIndex()].getTimer().scheduleAtFixedRate(new Refresh(leaguesTabbedPane.getSelectedIndex()), Props.getRefreshRate() * 60 * 1000, Props.getRefreshRate() * 60 * 1000);
         }
-    }//GEN-LAST:event_NHLGameTableKeyReleased
+        gg.execute();
+    }//GEN-LAST:event_refreshBtnActionPerformed
 
-    private void restartCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_restartCBActionPerformed
-        streamlink.restart = restartCB.isSelected();
-    }//GEN-LAST:event_restartCBActionPerformed
+    private void NHLNextDayBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NHLNextDayBtnActionPerformed
+        leagues[leaguesTabbedPane.getSelectedIndex()].setFavGameSelected(false);
+        leagues[leaguesTabbedPane.getSelectedIndex()].setDate(Time.getNextDay(leagues[leaguesTabbedPane.getSelectedIndex()].getDate()));
+        leagues[leaguesTabbedPane.getSelectedIndex()].getDateTF().setDate(Time.getDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate(), "yyyy-MM-dd"));
+        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(0);
+    }//GEN-LAST:event_NHLNextDayBtnActionPerformed
 
-    private void refreshBtnActionPreformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPreformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_refreshBtnActionPreformed
+    private void NHLPrevDayBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NHLPrevDayBtnActionPerformed
+        leagues[leaguesTabbedPane.getSelectedIndex()].setFavGameSelected(false);
+        leagues[leaguesTabbedPane.getSelectedIndex()].setDate(Time.getPrevDay(leagues[leaguesTabbedPane.getSelectedIndex()].getDate()));
+        leagues[leaguesTabbedPane.getSelectedIndex()].getDateTF().setDate(Time.getDate(leagues[leaguesTabbedPane.getSelectedIndex()].getDate(), "yyyy-MM-dd"));
+        leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(0);
+    }//GEN-LAST:event_NHLPrevDayBtnActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -914,9 +912,9 @@ public final class MainGUI extends javax.swing.JFrame {
     private javax.swing.JMenuBar jMenuBar1;
     private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JMenuItem jMenuItem2;
+    private javax.swing.JProgressBar jProgressBar1;
     private javax.swing.JTabbedPane leaguesTabbedPane;
     private javax.swing.JPanel mainPanel;
-    private javax.swing.JButton maximizeConsoleButton;
     private javax.swing.JPanel mlbDateSelectionPanel;
     private javax.swing.JPanel mlbPanel;
     private javax.swing.JScrollPane mlbScrollPanel;
@@ -943,7 +941,7 @@ public final class MainGUI extends javax.swing.JFrame {
             while (true) {
                 try {
                     Thread.sleep(Time.nextDay());
-                    for (int i = 0; i < leaguesTabbedPane.getTabCount(); i++) {
+                    for (int i = 0; i < leaguesTabbedPane.getTabCount() - 1; i++) {
                         leagues[i].setDate(Time.getPSTDate("yyyy-MM-dd"));
                         leagues[i].getDateTF().setDate(Time.getPSTDate1("MMM dd, yyyy"));
                         leagues[i].getGwi().setDate(leagues[i].getDate());
@@ -977,6 +975,9 @@ public final class MainGUI extends javax.swing.JFrame {
 
             @Override
             protected Void doInBackground() throws Exception {
+                if (leaguesTabbedPane.getSelectedIndex() == 2) {
+                    return null;
+                }
                 try {
                     DefaultTableModel model = (DefaultTableModel) leagues[lg].getTable().getModel();
                     model.setRowCount(0);
@@ -1009,10 +1010,11 @@ public final class MainGUI extends javax.swing.JFrame {
                             leagues[lg].setSelectedGame(setRow(row, lg));
                         } else if (leaguesTabbedPane.getTitleAt(lg).equals(leagues[leaguesTabbedPane.getSelectedIndex()].getName())) {
                             setRow(row, lg);
-                            enablePlayBtn();
                         }
-
+                        
                         leagues[lg].getGwi().setDate(leagues[lg].getDate());
+                        enablePlayBtn();
+
                     } else if (leagues[lg].getGames() == null) {
                         model.setRowCount(0);
                         model.addRow(new Object[]{"None", "None", "None"});
@@ -1020,7 +1022,7 @@ public final class MainGUI extends javax.swing.JFrame {
                             leagues[leaguesTabbedPane.getSelectedIndex()].getTimer().cancel();
                             leagues[leaguesTabbedPane.getSelectedIndex()].setTimer(null);
                         }
-                        if (leaguesTabbedPane.getTitleAt(leaguesTabbedPane.getSelectedIndex()).equals(leagues[leaguesTabbedPane.getSelectedIndex()].getName())) {
+                        if (leaguesTabbedPane.getTitleAt(lg).equals(leagues[leaguesTabbedPane.getSelectedIndex()].getName())) {
                             playBtn.setEnabled(false);
                         }
                     }
@@ -1042,7 +1044,7 @@ public final class MainGUI extends javax.swing.JFrame {
         for (int i = 0; i < leagues[lg].getGames().length; i++) {
             if ((leagues[lg].getGames()[i].getAwayTeam()).equals(team)) {
                 if (leagues[lg].getGames()[i].getGameState().contains("Pre") || leagues[lg].getGames()[i].getGameState().contains("In Progress") || leagues[lg].getGames()[i].getGameState().contains("Final")) {
-                    if (leagues[lg].getGames()[i].contains("AWAY")) {
+                    if (leagues[leaguesTabbedPane.getSelectedIndex()].getGames()[i].contains("AWAY")) {
                         return i + "a";
                     }
                     return i + "n";
@@ -1064,7 +1066,7 @@ public final class MainGUI extends javax.swing.JFrame {
 
     private int setRow(int row, int lg) {
         if (row != -1) {
-            if ((!leagues[lg].getFavoriteTeam().equals("") || !leagues[lg].getFavoriteTeam().equals("None")) && !leagues[lg].isFavGameSelected()) {
+            if (leaguesTabbedPane.getTitleAt(lg).equals(leagues[leaguesTabbedPane.getSelectedIndex()].getName()) && (!leagues[lg].getFavoriteTeam().equals("") || !leagues[lg].getFavoriteTeam().equals("None")) && !leagues[lg].isFavGameSelected()) {
                 String index = getFavTeamIndex(leagues[lg].getFavoriteTeam(), lg);
                 int idx = Integer.parseInt(index.substring(0, index.length() - 1));
                 char homeOrAway = index.charAt(index.length() - 1);
@@ -1127,6 +1129,7 @@ public final class MainGUI extends javax.swing.JFrame {
     }
 
     private void getAvailableStreams(int row) {
+        gettingFeeds = true;
         feedCB.removeAllItems();
         if (leagues[leaguesTabbedPane.getSelectedIndex()].getGames()[row].getNumOfFeeds() > 0) {
             for (int i = 0; i < leagues[leaguesTabbedPane.getSelectedIndex()].getGames()[row].getNumOfFeeds(); i++) {
@@ -1137,10 +1140,14 @@ public final class MainGUI extends javax.swing.JFrame {
                 }
             }
         }
+        gettingFeeds = false;
     }
 
     private boolean checkID(String id) {
-        BufferedReader br = null;
+        if (id == null) {
+            return false;
+        }
+        /*BufferedReader br = null;
         boolean idExists = false;
         try {
             String base = "";
@@ -1193,7 +1200,9 @@ public final class MainGUI extends javax.swing.JFrame {
                 }
             }
         }
-        return idExists;
+        return idExists;*/
+        
+        return leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().setUrl(getMediaID(), leagues[leaguesTabbedPane.getSelectedIndex()].getName());
     }
 
     private void fillIDs(File ids) {
@@ -1250,7 +1259,6 @@ public final class MainGUI extends javax.swing.JFrame {
             if (e) {
                 e = e && checkID(leagues[leaguesTabbedPane.getSelectedIndex()].getGames()[idx].getFeedID(feedCB.getSelectedIndex()));
             }
-
             playBtn.setEnabled(e);
 
             if (!e && saveStreamCB.isSelected()) {
@@ -1273,7 +1281,7 @@ public final class MainGUI extends javax.swing.JFrame {
         }
     }
 
-    private SwingWorker<Void, Void> playGame() {
+    private SwingWorker<Void, Void> playGame(int lg) {
 
         SwingWorker<Void, Void> worker;
         worker = new SwingWorker<Void, Void>() {
@@ -1283,8 +1291,9 @@ public final class MainGUI extends javax.swing.JFrame {
                 try {
                     if (!Props.getVlcloc().equals("")) {
                         Process l;
-                        int idx = leagues[leaguesTabbedPane.getSelectedIndex()].getSelectedGame();
-                        l = streamlink.run(leagues[leaguesTabbedPane.getSelectedIndex()].getGames()[idx], leagues[leaguesTabbedPane.getSelectedIndex()].getGwi());
+                        int idx = leagues[lg].getSelectedGame();
+                        l = streamlink.run(leagues[lg].getGames()[idx], leagues[lg].getGwi());
+                        boolean opened = false;
 
                         if (l != null) {
                             SwingWorker<Void, Void> go = getSLOutput(l);
@@ -1294,19 +1303,25 @@ public final class MainGUI extends javax.swing.JFrame {
                             System.out.println("Streamlink starting...\n");
 
                             while (l.isAlive()) {
+                                if (!opened) {
+                                    int li = consoleTA.getText().lastIndexOf("-----");
+                                    if (consoleTA.getText().substring(li, consoleTA.getText().length()).contains("Starting")) {
+                                        jProgressBar1.setIndeterminate(false);
+                                        opened = true;
+                                    }
+                                }
                                 Thread.sleep(700);
-                                if (leagues[leaguesTabbedPane.getSelectedIndex()].getStreamlinkSwitch() == -1) {
+                                if (leagues[lg].getStreamlinkSwitch() == -1) {
                                     l.destroy();
                                 }
                             }
                             l.waitFor();
                             System.out.println("Streamlink done");
-                            int li = consoleTA.getText().lastIndexOf("-----");
-                            if (!consoleTA.getText().substring(li, consoleTA.getText().length()).contains("Opening")) {
+                            if (!opened) {
                                 MessageBox.show("Stream unavailable. Please report the game you are trying to play.", "Error", 2);
                             }
                         } else if (playBtn.getText().equals("Stop Recording")) {
-                            leagues[leaguesTabbedPane.getSelectedIndex()].setStreamlinkSwitch(-1);
+                            leagues[lg].setStreamlinkSwitch(-1);
 
                             if (saveStreamCB.isSelected()) {
                                 playBtn.setText("Record");
@@ -1449,7 +1464,7 @@ public final class MainGUI extends javax.swing.JFrame {
                                 System.exit(0);
                             }
                         }
-                        MessageBox.show("Could not authentically update. Please manually update", version, build);
+                        MessageBox.show("Could not automatically update. Please manually update", version, build);
                     }
                 } else {
                     updateMI.setVisible(false);
