@@ -31,6 +31,22 @@ public class ProcessReader {
 
         return "";
     }
+    
+    public static void keepProcessWorking(Process p) {
+        try {
+        BufferedReader stdInput = new BufferedReader(new InputStreamReader(p.getInputStream()));
+
+            while ((p.isAlive()) || (stdInput.ready())) {
+                if (stdInput.ready()) {
+                    while (stdInput.ready()) {
+                        
+                    }
+                }
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
 
     public static void putProcessOutput(Process p, JTextPane tp) {
         try {

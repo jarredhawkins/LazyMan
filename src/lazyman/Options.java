@@ -79,6 +79,9 @@ public class Options extends javax.swing.JDialog {
                 mpLocTB.setText(Props.getVlcloc());
             }
             
+            if (Props.getProxyPort() != 8080)
+                portSpinner.setValue(Props.getProxyPort());
+            
             go = true;
     }
 
@@ -115,6 +118,8 @@ public class Options extends javax.swing.JDialog {
         mpLocBtn = new javax.swing.JButton();
         jLabel7 = new javax.swing.JLabel();
         MLBCB = new javax.swing.JComboBox<>();
+        jLabel8 = new javax.swing.JLabel();
+        portSpinner = new javax.swing.JSpinner();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setResizable(false);
@@ -215,7 +220,7 @@ public class Options extends javax.swing.JDialog {
         jLabel3.setText("Streamlink Arguments:");
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 7;
+        gridBagConstraints.gridy = 10;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         jPanel1.add(jLabel3, gridBagConstraints);
 
@@ -231,7 +236,7 @@ public class Options extends javax.swing.JDialog {
 
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 8;
+        gridBagConstraints.gridy = 11;
         gridBagConstraints.gridwidth = 4;
         gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
         jPanel1.add(jScrollPane1, gridBagConstraints);
@@ -241,7 +246,7 @@ public class Options extends javax.swing.JDialog {
         jLabel4.setMinimumSize(new java.awt.Dimension(235, 15));
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 5;
+        gridBagConstraints.gridy = 7;
         gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
         gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
         jPanel1.add(jLabel4, gridBagConstraints);
@@ -258,7 +263,7 @@ public class Options extends javax.swing.JDialog {
 
         gridBagConstraints = new java.awt.GridBagConstraints();
         gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 6;
+        gridBagConstraints.gridy = 8;
         gridBagConstraints.gridwidth = 4;
         gridBagConstraints.fill = java.awt.GridBagConstraints.BOTH;
         jPanel1.add(jScrollPane2, gridBagConstraints);
@@ -338,6 +343,26 @@ public class Options extends javax.swing.JDialog {
         gridBagConstraints.gridy = 1;
         jPanel1.add(MLBCB, gridBagConstraints);
 
+        jLabel8.setText("Proxy Port:");
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 0;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.EAST;
+        jPanel1.add(jLabel8, gridBagConstraints);
+
+        portSpinner.setPreferredSize(new java.awt.Dimension(50, 26));
+        portSpinner.setValue(8080);
+        portSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                portSpinnerStateChanged(evt);
+            }
+        });
+        gridBagConstraints = new java.awt.GridBagConstraints();
+        gridBagConstraints.gridx = 1;
+        gridBagConstraints.gridy = 5;
+        gridBagConstraints.anchor = java.awt.GridBagConstraints.WEST;
+        jPanel1.add(portSpinner, gridBagConstraints);
+
         jScrollPane3.setViewportView(jPanel1);
 
         getContentPane().add(jScrollPane3, java.awt.BorderLayout.CENTER);
@@ -360,6 +385,7 @@ public class Options extends javax.swing.JDialog {
         Props.setMediaPlayerrArgs(mpArgTB.getText());
         Props.setRefreshRate((int) refreshSpinner.getValue());
         Props.setVlcloc(mpLocTB.getText());
+        Props.setProxyPort((int) portSpinner.getValue());
         applyBtn.setEnabled(false);
     }//GEN-LAST:event_applyBtnActionPerformed
 
@@ -462,6 +488,10 @@ public class Options extends javax.swing.JDialog {
         enableApply();
     }//GEN-LAST:event_MLBCBActionPerformed
 
+    private void portSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_portSpinnerStateChanged
+        enableApply();
+    }//GEN-LAST:event_portSpinnerStateChanged
+
     private void setNHLMap() {
         nhl.put("None", "None");
         nhl.put("Ottawa Senators", "OTT");
@@ -544,6 +574,7 @@ public class Options extends javax.swing.JDialog {
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
@@ -551,6 +582,7 @@ public class Options extends javax.swing.JDialog {
     private javax.swing.JTextArea mpArgTB;
     private javax.swing.JButton mpLocBtn;
     private javax.swing.JTextField mpLocTB;
+    private javax.swing.JSpinner portSpinner;
     private javax.swing.JSpinner refreshSpinner;
     private javax.swing.JTextField saveStreamLocTB;
     private javax.swing.JButton setSaveBtn;
@@ -568,7 +600,8 @@ public class Options extends javax.swing.JDialog {
                 !Props.getStreamLinkArgs().equals(slArgTB.getText()) ||
                 !Props.getMediaPlayerrArgs().equals(mpArgTB.getText()) ||
                 Props.getRefreshRate() != (int) refreshSpinner.getValue() ||
-                !Props.getVlcloc().equals(mpLocTB.getText());
+                !Props.getVlcloc().equals(mpLocTB.getText()) ||
+                Props.getProxyPort() != (int) portSpinner.getValue();
         applyBtn.setEnabled(enable);
     }
 }

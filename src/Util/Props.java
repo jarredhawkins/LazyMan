@@ -84,6 +84,44 @@ public class Props {
             }
         }
     }
+    
+    public static int getProxyPort() {
+        try {
+            InputStream input;
+            input = new FileInputStream(getConfigLoc());
+
+            PROP.load(input);
+            input.close();
+            if (PROP.containsKey("ProxyPort")) {
+                return Integer.parseInt(PROP.getProperty("ProxyPort"));
+            }
+            return 8080;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return 8080;
+    }
+
+    public static void setProxyPort(int port) {
+        OutputStream output = null;
+        try {
+            output = new FileOutputStream(getConfigLoc());
+
+            PROP.setProperty("ProxyPort", String.valueOf(port));
+            PROP.store(output, "");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (output != null) {
+                try {
+                    output.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 
     public static String getPW() {
         try {

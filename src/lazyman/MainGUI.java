@@ -2,6 +2,7 @@ package lazyman;
 
 import GameObj.Game;
 import GameObj.League;
+import Objects.Proxy;
 import Objects.Streamlink;
 import Objects.Time;
 import Objects.Web;
@@ -14,25 +15,20 @@ import Util.Console.MessageConsole;
 import Util.OpenURL;
 import Util.ProcessReader;
 import Util.Props;
-import Util.UpdateBar;
+import Util.InfiniteBar;
 import java.awt.Color;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.Scanner;
 import java.util.TimerTask;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 import java.util.Timer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.table.DefaultTableModel;
 
 public final class MainGUI extends javax.swing.JFrame {
@@ -40,10 +36,15 @@ public final class MainGUI extends javax.swing.JFrame {
     private final Streamlink streamlink;
     private final League[] leagues;
     private boolean gettingFeeds;
+    private Proxy p;
+    private int streamCnt;
 
     public MainGUI() {
         initComponents();
         checkUpdate();
+        p = new Proxy(Props.getProxyPort());
+        p.run();
+        streamCnt = 0;
         gettingFeeds = false;
         streamlink = new Streamlink();
         getVLCLocation();
@@ -57,7 +58,7 @@ public final class MainGUI extends javax.swing.JFrame {
         leagues[1].setTable(MLBGameTable);
         leagues[1].setDateTF(MLBDateTF);
         leagues[1].setKeyURL("playback.svcs.mlb.com");
-        
+
         for (int i = 0; i < leaguesTabbedPane.getTabCount() - 1; i++) {
             leagues[i].setName(leaguesTabbedPane.getTitleAt(i));
             leagues[i].setDate(Time.getPSTDate("yyyy-MM-dd"));
@@ -171,6 +172,11 @@ public final class MainGUI extends javax.swing.JFrame {
         setIconImage(Toolkit.getDefaultToolkit().getImage(MainGUI.class.getResource("/Logos/LM.png")));
         setLocationByPlatform(true);
         setPreferredSize(new java.awt.Dimension(648, 512));
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                formWindowClosing(evt);
+            }
+        });
 
         mainPanel.setMaximumSize(new java.awt.Dimension(32767, 4096));
         mainPanel.setLayout(new javax.swing.BoxLayout(mainPanel, javax.swing.BoxLayout.Y_AXIS));
@@ -611,34 +617,22 @@ public final class MainGUI extends javax.swing.JFrame {
             return;
         }
         jProgressBar1.setIndeterminate(true);
-        if (leagues[leaguesTabbedPane.getSelectedIndex()].getName().equals("MLB")) {
-            if (Integer.parseInt(leagues[leaguesTabbedPane.getSelectedIndex()].getDate().substring(0, 4)) > 2017) {
-                checkHosts(leagues[leaguesTabbedPane.getSelectedIndex()].getKeyURL(), leagues[leaguesTabbedPane.getSelectedIndex()]);
-            } else {
-                checkHosts("mlb-ws-mf.media.mlb.com", leagues[leaguesTabbedPane.getSelectedIndex()]);
-            }
-        } else {
-            checkHosts(leagues[leaguesTabbedPane.getSelectedIndex()].getKeyURL(), leagues[leaguesTabbedPane.getSelectedIndex()]);
-        }
-
-        if (!leagues[leaguesTabbedPane.getSelectedIndex()].isHostsFileEdited()) {
-            MessageBox.show("You are not completely set up! Your hosts file needs to be edited for " + leagues[leaguesTabbedPane.getSelectedIndex()].getName() + ".", "Hosts file not edited", 2);
-            return;
-        }
 
         if (streamlink.getLocation() == null || streamlink.getLocation().equals("")) {
             getSLLoc();
 
             if (streamlink.getLocation() == null || streamlink.getLocation().equals("")) {
                 MessageBox.show("Streamlink was not set! It is required to stream games.", "Streamlink not set", 2);
+                jProgressBar1.setIndeterminate(false);
                 return;
             }
         }
 
-        /*if (leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().getUrl().endsWith("n/a")) {
+        if (leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().getUrl().endsWith("n/a")) {
             MessageBox.show("The stream has expired. Ask StevensNJD4 to make it available.", "Not Available", 0);
+            jProgressBar1.setIndeterminate(false);
             return;
-        }*/
+        }
 
         if (playBtn.getText().equals("Stop Recording")) {
             leagues[leaguesTabbedPane.getSelectedIndex()].setStreamlinkSwitch(-1);
@@ -668,6 +662,10 @@ public final class MainGUI extends javax.swing.JFrame {
         Options op = new Options(this, true);
         op.setLocationRelativeTo(this);
         op.setVisible(true);
+
+        if (p.getPort() != Props.getProxyPort()) {
+            MessageBox.show("Port will be changed on next launch.", "Port change", 1);
+        }
 
         for (int i = 0; i < leaguesTabbedPane.getTabCount() - 1; i++) {
             leagues[i].setFavoriteTeam(Props.getFavTeam(leagues[i].getName()));
@@ -762,9 +760,10 @@ public final class MainGUI extends javax.swing.JFrame {
     }//GEN-LAST:event_CDNCBItemStateChanged
 
     private void feedCBItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_feedCBItemStateChanged
-       if (gettingFeeds)
-           return;
-        
+        if (gettingFeeds) {
+            return;
+        }
+
         Object item = evt.getItem();
 
         if (!item.toString().equals("Info available later") && evt.getStateChange() == java.awt.event.ItemEvent.SELECTED && feedCB.getItemCount() >= 1) {
@@ -883,6 +882,14 @@ public final class MainGUI extends javax.swing.JFrame {
         leagues[leaguesTabbedPane.getSelectedIndex()].setSelectedGame(0);
     }//GEN-LAST:event_NHLPrevDayBtnActionPerformed
 
+    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        SwingWorker<Void, Void> w = waiting();
+        w.execute();
+        InfiniteBar ub = new InfiniteBar(null, true, "Waiting for stream(s) to close then exiting...");
+        ub.setLocationRelativeTo(null);
+        ub.setVisible(true);
+    }//GEN-LAST:event_formWindowClosing
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem AboutMI;
@@ -960,9 +967,31 @@ public final class MainGUI extends javax.swing.JFrame {
         worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                UpdateBar ub = new UpdateBar(null, true);
+                InfiniteBar ub = new InfiniteBar(null, true, "Updating...");
                 ub.setLocationRelativeTo(null);
                 ub.setVisible(true);
+                return null;
+            }
+        };
+        return worker;
+
+    }
+
+    private SwingWorker<Void, Void> waiting() {
+
+        SwingWorker<Void, Void> worker;
+        worker = new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                while (streamCnt > 0) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ex) {
+                        p.kill();
+                    }
+                }
+                p.kill();
+                System.exit(0);
                 return null;
             }
         };
@@ -1011,7 +1040,7 @@ public final class MainGUI extends javax.swing.JFrame {
                         } else if (leaguesTabbedPane.getTitleAt(lg).equals(leagues[leaguesTabbedPane.getSelectedIndex()].getName())) {
                             setRow(row, lg);
                         }
-                        
+
                         leagues[lg].getGwi().setDate(leagues[lg].getDate());
                         enablePlayBtn();
 
@@ -1147,92 +1176,7 @@ public final class MainGUI extends javax.swing.JFrame {
         if (id == null) {
             return false;
         }
-        /*BufferedReader br = null;
-        boolean idExists = false;
-        try {
-            String base = "";
-            try {
-                base = Paths.get(Props.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toFile().getParent();
-            } catch (URISyntaxException ex) {
-                ex.printStackTrace();
-            }
-            File ids;
-            if (leagues[leaguesTabbedPane.getSelectedIndex()].getName().equals("NHL")) {
-                ids = new File(base + System.getProperty("file.separator") + "ids.txt");
-            } else {
-                ids = new File(base + System.getProperty("file.separator") + "mlbids.txt");
-            }
-            if (!ids.exists()) {
-                fillIDs(ids);
-            }
-
-            br = new BufferedReader(new FileReader(ids));
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (line.contains(id)) {
-                    idExists = true;
-                    break;
-                }
-            }
-            if (!idExists) {
-                fillIDs(ids);
-
-                br = new BufferedReader(new FileReader(ids));
-
-                while ((line = br.readLine()) != null) {
-                    if (line.equals(id)) {
-                        idExists = true;
-                        break;
-                    }
-                }
-            }
-
-        } catch (FileNotFoundException ex) {
-            ex.printStackTrace();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        } finally {
-            if (br != null) {
-                try {
-                    br.close();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            }
-        }
-        return idExists;*/
-        
         return leagues[leaguesTabbedPane.getSelectedIndex()].getGwi().setUrl(getMediaID(), leagues[leaguesTabbedPane.getSelectedIndex()].getName());
-    }
-
-    private void fillIDs(File ids) {
-        String file = "ids";
-        if (!leagues[leaguesTabbedPane.getSelectedIndex()].getPlaybackIDs().isEmpty()) {
-            leagues[leaguesTabbedPane.getSelectedIndex()].getPlaybackIDs().clear();
-        }
-        if (!leagues[leaguesTabbedPane.getSelectedIndex()].getName().equals("NHL")) {
-            file = "mlbids";
-        }
-
-        try {
-            String url = "nhl.freegamez.ga";
-
-            if (!Props.getIP().equals("")) {
-                url = Props.getIP();
-            }
-            Collections.addAll(leagues[leaguesTabbedPane.getSelectedIndex()].getPlaybackIDs(), Web.getContent("http://" + url + "/static/" + file + ".txt").replace("akc", "").replace("l3c", "").split("\n"));
-        } catch (UnknownHostException uhe) {
-            MessageBox.show("The server may be down.", "Error", 2);
-        }
-        try (FileWriter writer = new FileWriter(ids, false)) {
-            for (String str : leagues[leaguesTabbedPane.getSelectedIndex()].getPlaybackIDs()) {
-                writer.write(str + "\r\n");
-            }
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        } finally {
-            leagues[leaguesTabbedPane.getSelectedIndex()].getPlaybackIDs().clear();
-        }
     }
 
     private void enablePlayBtn() {
@@ -1288,11 +1232,16 @@ public final class MainGUI extends javax.swing.JFrame {
 
             @Override
             protected Void doInBackground() {
+                if (!p.isReady()) {
+                    MessageBox.show("Could not start proxy.", "Proxy not running", 2);
+                    jProgressBar1.setIndeterminate(false);
+                    return null;
+                }
                 try {
                     if (!Props.getVlcloc().equals("")) {
                         Process l;
                         int idx = leagues[lg].getSelectedGame();
-                        l = streamlink.run(leagues[lg].getGames()[idx], leagues[lg].getGwi());
+                        l = streamlink.run(leagues[lg].getGames()[idx], leagues[lg].getGwi(), p.getPort());
                         boolean opened = false;
 
                         if (l != null) {
@@ -1308,6 +1257,7 @@ public final class MainGUI extends javax.swing.JFrame {
                                     if (consoleTA.getText().substring(li, consoleTA.getText().length()).contains("Starting")) {
                                         jProgressBar1.setIndeterminate(false);
                                         opened = true;
+                                        streamCnt++;
                                     }
                                 }
                                 Thread.sleep(700);
@@ -1317,6 +1267,9 @@ public final class MainGUI extends javax.swing.JFrame {
                             }
                             l.waitFor();
                             System.out.println("Streamlink done");
+                            jProgressBar1.setIndeterminate(false);
+                            streamCnt--;
+
                             if (!opened) {
                                 MessageBox.show("Stream unavailable. Please report the game you are trying to play.", "Error", 2);
                             }
@@ -1332,6 +1285,7 @@ public final class MainGUI extends javax.swing.JFrame {
                     } else {
                         String message = "Please set the location to your media player executable in Edit > Preferences.";
                         MessageBox.show(message, "Error", 2);
+                        jProgressBar1.setIndeterminate(false);
                     }
                     playBtn.setEnabled(true);
                 } catch (Exception ex) {
@@ -1530,7 +1484,7 @@ public final class MainGUI extends javax.swing.JFrame {
         } catch (UnknownHostException uhe) {
             MessageBox.show("You are either offline or GitHub is down to check for updates.", "Error", 2);
         } catch (IOException ex) {
-            Logger.getLogger(MainGUI.class.getName()).log(Level.SEVERE, null, ex);
+            ex.printStackTrace();
         }
     }
 
@@ -1559,6 +1513,26 @@ public final class MainGUI extends javax.swing.JFrame {
             protected Void doInBackground() {
                 try {
                     ProcessReader.putProcessOutput(p, consoleTA);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                return null;
+
+            }
+
+        };
+        return worker;
+    }
+
+    private SwingWorker<Void, Void> getMitmOutput(final Process p) {
+
+        SwingWorker<Void, Void> worker;
+        worker = new SwingWorker<Void, Void>() {
+
+            @Override
+            protected Void doInBackground() {
+                try {
+                    ProcessReader.keepProcessWorking(p);
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }

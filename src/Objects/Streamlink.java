@@ -3,13 +3,13 @@ package Objects;
 import GameObj.Game;
 import GameObj.GameWatchInfo;
 import Util.Props;
-import Util.Encryption;
 import Util.MessageBox;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 public class Streamlink {
 
@@ -34,7 +34,7 @@ public class Streamlink {
         }
     }
 
-    public Process run(Game g, GameWatchInfo gwi) {
+    public Process run(Game g, GameWatchInfo gwi, int port) {
         if (gwi.getUrl().equals("")) {
             MessageBox.show("Could not get the m3u8 URL. The server may be down.", "Error", 2);
             return null;
@@ -42,7 +42,7 @@ public class Streamlink {
         String ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36";
         ProcessBuilder pb;
 
-        List<String> args = new ArrayList<>(Arrays.asList(new String[]{location, getURLFormat(gwi.getUrl(), gwi.getQuality().equals("best")), gwi.getQuality(), "--http-header", "User-Agent=" + ua, "--hls-segment-threads=4"}));
+        List<String> args = new ArrayList<>(Arrays.asList(new String[]{location, getURLFormat(gwi.getUrl(), gwi.getQuality().equals("best")), gwi.getQuality(), "--http-header", "User-Agent=" + ua, "--hls-segment-threads=4", "--https-proxy", "127.0.0.1:" + port}));
 
         if (record) {
             String saveLoc = Props.getSaveStreamLoc() + File.separator + gwi.getDate();
@@ -78,7 +78,7 @@ public class Streamlink {
                 args.add(Props.getVlcloc() + arg);
                    
             } else {
-                args.add(Props.getVlcloc() + " --user-agent='" + ua + "' " + arg);
+                args.add(Props.getVlcloc()  + arg);
                 args.add("--player-passthrough");
                 args.add("hls");
             }
@@ -91,6 +91,10 @@ public class Streamlink {
         }
 
         pb = new ProcessBuilder(args).redirectErrorStream(true);
+        if (Props.getVlcloc().toLowerCase().contains("mpv")) {
+            Map<String, String> env = pb.environment();
+            env.put("http_proxy", "http://127.0.0.1:" + Props.getProxyPort());
+        }
         
         try {
             return pb.start();
