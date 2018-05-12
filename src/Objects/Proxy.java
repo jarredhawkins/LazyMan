@@ -1,8 +1,7 @@
 package Objects;
 
-import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +37,12 @@ public class Proxy {
             mitm = "linux" + System.getProperty("file.separator") + "mitmdump";
         }
         path += "mitm" + System.getProperty("file.separator");
+        if (!System.getProperty("os.name").toLowerCase().contains("win")) {
+            File m = new File(path + mitm);
+            if (!m.canExecute()) {
+                m.setExecutable(true);
+            }
+        }
     }
 
     public void run() {
@@ -66,9 +71,9 @@ public class Proxy {
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
-            }
-            else
+            } else {
                 p.destroy();
+            }
             p = null;
         }
     }
@@ -95,7 +100,7 @@ public class Proxy {
             return false;
         }
     }
-    
+
     public Process get() {
         return p;
     }

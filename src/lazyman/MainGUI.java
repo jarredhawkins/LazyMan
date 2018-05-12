@@ -597,7 +597,7 @@ public final class MainGUI extends javax.swing.JFrame {
             }// </editor-fold>//GEN-END:initComponents
 
     private void exitMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMIActionPerformed
-        System.exit(0);
+        formWindowClosing(null);
     }//GEN-LAST:event_exitMIActionPerformed
 
     private void saveStreamCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveStreamCBActionPerformed
