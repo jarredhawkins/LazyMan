@@ -14,6 +14,7 @@ public class LazyMan {
     public static void main(String[] args) {
         try {
             if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+                System.setProperty("apple.eawt.quitStrategy", "CLOSE_ALL_WINDOWS");
                 System.setProperty("apple.laf.useScreenMenuBar", "true");
                 System.setProperty("apple.awt.application.name", "LazyMan");
                 

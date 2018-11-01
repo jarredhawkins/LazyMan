@@ -62,6 +62,12 @@ public class GetMLBInfo {
                     g1.setTimeRemaining("n/a");
                 }
                 
+                try {
+                    g1.setActualStart(jo.getAsJsonObject().get("gameDate").getAsString().replace("T", " ").replace("Z", ""));
+                } catch (Exception e) {
+                    g1.setActualStart("");
+                }
+                
                 boolean cl = false;
                 if (jo.getAsJsonObject().getAsJsonObject("content").getAsJsonObject("media") != null) {
                     MAIN_LOOP:

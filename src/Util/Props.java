@@ -95,11 +95,11 @@ public class Props {
             if (PROP.containsKey("ProxyPort")) {
                 return Integer.parseInt(PROP.getProperty("ProxyPort"));
             }
-            return 8080;
+            return 8050;
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return 8080;
+        return 8050;
     }
 
     public static void setProxyPort(int port) {

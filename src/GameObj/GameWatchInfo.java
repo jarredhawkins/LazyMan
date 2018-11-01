@@ -62,12 +62,12 @@ public class GameWatchInfo {
         if (url.contains("exp=")) {
             int expLoc = url.indexOf("exp=");
             long expires = Integer.parseInt(url.substring(expLoc + 4, url.indexOf("~", expLoc)));
-
+            
             if (expires < System.currentTimeMillis() / 1000) {
                 return "n/a";
             }
         }
-        return url;
+        return url.replace("https://", "http://");
     }
 
     public boolean setUrl(String mediaID, String league) {
@@ -117,7 +117,7 @@ public class GameWatchInfo {
         }*/
         if (!Time.isToday(date)) {
             try {
-                url = Web.getContent("http://" + m3u8URL + "/getM3U8.php?league=" + league + "&date=" + date + "&id=" + mediaID + "&cdn=akc");
+                url = Web.getContent("http://" + m3u8URL + "/getM3U8.php?league=" + league + "&date=" + date + "&id=" + mediaID + "&cdn=akc");System.out.println("http://" + m3u8URL + "/getM3U8.php?league=" + league + "&date=" + date + "&id=" + mediaID + "&cdn=akc");
                 return !url.contains("Not");
             } catch (UnknownHostException ex) {
                 ex.printStackTrace();

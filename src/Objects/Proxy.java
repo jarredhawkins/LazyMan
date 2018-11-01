@@ -28,15 +28,15 @@ public class Proxy {
         if (!System.getProperty("os.name").toLowerCase().contains("linux")) {
             path = Paths.get(".").toAbsolutePath().normalize().toString() + System.getProperty("file.separator");
             if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-                mitm = "win" + System.getProperty("file.separator") + "mitmdump.exe";
+                mitm = "win" + System.getProperty("file.separator") + "mlbamproxy.exe";
             } else {
-                mitm = "mac" + System.getProperty("file.separator") + "mitmdump";
+                mitm = "mac" + System.getProperty("file.separator") + "mlbamproxy";
             }
         } else {
             path = new java.io.File(Proxy.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent() + System.getProperty("file.separator");
-            mitm = "linux" + System.getProperty("file.separator") + "mitmdump";
+            mitm = "linux" + System.getProperty("file.separator") + System.getProperty("os.arch") + System.getProperty("file.separator") + "mlbamproxy";
         }
-        path += "mitm" + System.getProperty("file.separator");
+        path += "mlbamproxy" + System.getProperty("file.separator");
         if (!System.getProperty("os.name").toLowerCase().contains("win")) {
             File m = new File(path + mitm);
             if (!m.canExecute()) {
@@ -46,7 +46,7 @@ public class Proxy {
     }
 
     public void run() {
-        List<String> args = new ArrayList<>(Arrays.asList(new String[]{path + mitm, "-p", getPort() + "", "-s", path + "proxy.py"}));
+        List<String> args = new ArrayList<>(Arrays.asList(new String[]{path + mitm, "-p", getPort() + "", "-d", "freegamez.ga", "-s", "mf.svc.nhl.com,playback.svcs.mlb.com,mlb-ws-mf.media.mlb.com"}));
         ProcessBuilder pb = new ProcessBuilder(args).inheritIO().redirectErrorStream(true);
         try {
             p = pb.start();
@@ -67,7 +67,7 @@ public class Proxy {
         if (p != null) {
             if (System.getProperty("os.name").toLowerCase().contains("windows")) {
                 try {
-                    Runtime.getRuntime().exec("taskkill /f /im mitmdump.exe");
+                    Runtime.getRuntime().exec("taskkill /f /im mlbamproxy.exe");
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }

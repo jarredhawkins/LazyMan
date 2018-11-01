@@ -68,13 +68,13 @@ public final class MainGUI extends javax.swing.JFrame {
         if (System.getProperty("os.name").toLowerCase().contains("win")) {
             changePasswordMI.setVisible(false);
         }
-        /*else if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            com.apple.eawt.Application application = com.apple.eawt.Application.getApplication();
+        else if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+            /*com.apple.eawt.Application application = com.apple.eawt.Application.getApplication();
             application.addPreferencesMenuItem();
-            application.setEnabledPreferencesMenu(true);
+            application.setEnabledPreferencesMenu(true);*/
             changePasswordMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_G, java.awt.event.InputEvent.META_MASK));
-            exitMI.setVisible(false);
-        }*/
+            exitMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Q, java.awt.event.InputEvent.META_MASK));
+        }
         getSLLoc();
         setButtons();
         new newDay().start();
@@ -164,6 +164,7 @@ public final class MainGUI extends javax.swing.JFrame {
         guidesMI = new javax.swing.JMenuItem();
         AboutMI = new javax.swing.JMenuItem();
         updateMI = new javax.swing.JMenuItem();
+        donateMI = new javax.swing.JMenu();
 
         consolePM.setLabel("popupMenu1");
 
@@ -344,7 +345,7 @@ public final class MainGUI extends javax.swing.JFrame {
                 refreshBtn1.setText("Refresh");
                 refreshBtn1.addActionListener(new java.awt.event.ActionListener() {
                     public void actionPerformed(java.awt.event.ActionEvent evt) {
-                        refreshBtnActionPreformed(evt);
+                        refreshBtn1ActionPerformed(evt);
                     }
                 });
                 mlbDateSelectionPanel.add(refreshBtn1);
@@ -591,6 +592,14 @@ public final class MainGUI extends javax.swing.JFrame {
 
                 jMenuBar1.add(jMenu3);
 
+                donateMI.setText("Donate");
+                donateMI.addMouseListener(new java.awt.event.MouseAdapter() {
+                    public void mouseClicked(java.awt.event.MouseEvent evt) {
+                        donateMIMouseClicked(evt);
+                    }
+                });
+                jMenuBar1.add(donateMI);
+
                 setJMenuBar(jMenuBar1);
 
                 pack();
@@ -816,10 +825,6 @@ public final class MainGUI extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_MLBGameTableMouseClicked
 
-    private void refreshBtnActionPreformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtnActionPreformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_refreshBtnActionPreformed
-
     private void MLBNextDayBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_MLBNextDayBtnActionPerformed
         leagues[leaguesTabbedPane.getSelectedIndex()].setFavGameSelected(false);
         leagues[leaguesTabbedPane.getSelectedIndex()].setDate(Time.getNextDay(leagues[leaguesTabbedPane.getSelectedIndex()].getDate()));
@@ -890,6 +895,14 @@ public final class MainGUI extends javax.swing.JFrame {
         ub.setVisible(true);
     }//GEN-LAST:event_formWindowClosing
 
+    private void donateMIMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_donateMIMouseClicked
+        OpenURL.open("https://streamlabs.com/stevensnjd4/");
+    }//GEN-LAST:event_donateMIMouseClicked
+
+    private void refreshBtn1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshBtn1ActionPerformed
+        refreshBtnActionPerformed(evt);
+    }//GEN-LAST:event_refreshBtn1ActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem AboutMI;
@@ -907,6 +920,7 @@ public final class MainGUI extends javax.swing.JFrame {
     private javax.swing.JPanel consolePanel;
     private javax.swing.JScrollPane consoleScrollPane;
     private javax.swing.JTextPane consoleTA;
+    private javax.swing.JMenu donateMI;
     private javax.swing.JMenuItem exitMI;
     private javax.swing.JComboBox<String> feedCB;
     private javax.swing.JPanel gameSelectionPanel;
